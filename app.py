@@ -4,27 +4,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import euclidean_distances
 
+# =================================
+# PAGE CONFIG
+# =================================
 st.set_page_config(
     page_title="Ensemble & Meta-Ensemble Clustering",
     layout="wide"
 )
 
-# =========================
+# =================================
 # LOAD DATA
-# =========================
+# =================================
 df = pd.read_csv("hasil_clustering.csv")
 
+# =================================
+# TITLE
+# =================================
 st.title("🚗 Ensemble & Meta-Ensemble Clustering Dataset Mobil")
+st.markdown(
+    """
+    Aplikasi ini menampilkan hasil **clustering**, **meta-ensemble Logistic Regression**,
+    serta **estimasi Spending Score** berdasarkan karakteristik data.
+    """
+)
 
-# =========================
+# =================================
 # PREVIEW DATASET
-# =========================
-st.subheader("Preview Dataset")
+# =================================
+st.subheader("📄 Preview Dataset")
 st.dataframe(df.head())
 
-# =========================
+# =================================
 # SEARCH BY USER ID
-# =========================
+# =================================
 st.subheader("🔍 Cari Hasil Clustering Berdasarkan User ID")
 
 user_id_input = st.number_input(
@@ -42,10 +54,10 @@ if st.button("Cari User"):
     else:
         st.warning("User ID tidak ditemukan")
 
-# =========================
-# INPUT MANUAL (SIMULASI REGRESI + CLUSTER)
-# =========================
-st.subheader("🧠 Input Manual (Prediksi Cluster Terdekat)")
+# =================================
+# INPUT MANUAL + SPENDING SCORE
+# =================================
+st.subheader("🧠 Input Manual & Prediksi Spending Score")
 
 col1, col2, col3 = st.columns(3)
 
@@ -58,29 +70,72 @@ with col2:
 with col3:
     purchased = st.selectbox("Purchased", [0, 1])
 
-if st.button("Prediksi Cluster"):
-    # gunakan PCA space untuk cari data terdekat
+if st.button("Prediksi"):
+    # ---------------------------------
+    # CARI DATA TERDEKAT
+    # ---------------------------------
     features = df[["Age", "AnnualSalary", "Purchased"]]
-
     input_vector = np.array([[age, salary, purchased]])
-    distances = euclidean_distances(features, input_vector)
 
+    distances = euclidean_distances(features, input_vector)
     nearest_index = distances.argmin()
     nearest_data = df.iloc[nearest_index]
 
-    st.success("Prediksi berdasarkan data terdekat")
-    st.write("Cluster (Ensemble):", nearest_data["Cluster"])
-    st.write("Cluster Final (Logistic Regression):", nearest_data["Cluster_LogReg"])
+    cluster_ensemble = nearest_data["Cluster"]
+    cluster_final = nearest_data["Cluster_LogReg"]
 
-    st.info("Data referensi terdekat:")
+    # ---------------------------------
+    # HITUNG SPENDING SCORE (SINTETIS)
+    # ---------------------------------
+    salary_norm = min(salary / df["AnnualSalary"].max(), 1)
+
+    cluster_weight = {
+        0: 0.3,  # low spender
+        1: 0.6,  # medium spender
+        2: 0.9   # high spender
+    }.get(cluster_final, 0.5)
+
+    spending_score = (
+        salary_norm * 0.6 +
+        purchased * 0.3 +
+        cluster_weight * 0.1
+    ) * 100
+
+    spending_score = round(spending_score, 2)
+
+    # ---------------------------------
+    # OUTPUT
+    # ---------------------------------
+    st.success("✅ Hasil Prediksi")
+
+    st.write("🔹 Cluster (Ensemble):", cluster_ensemble)
+    st.write("🔹 Cluster Final (Logistic Regression):", cluster_final)
+    st.write("🔥 Prediksi Spending Score:", spending_score)
+
+    # ---------------------------------
+    # KESIMPULAN OTOMATIS
+    # ---------------------------------
+    if spending_score < 40:
+        conclusion = "Pengguna diprediksi memiliki tingkat pengeluaran RENDAH."
+    elif spending_score < 70:
+        conclusion = "Pengguna diprediksi memiliki tingkat pengeluaran MENENGAH."
+    else:
+        conclusion = "Pengguna diprediksi memiliki tingkat pengeluaran TINGGI."
+
+    st.info("📌 Kesimpulan: " + conclusion)
+
+    # ---------------------------------
+    # DATA REFERENSI
+    # ---------------------------------
+    st.subheader("📍 Data Referensi Terdekat")
     st.dataframe(nearest_data.to_frame().T)
 
-# =========================
+# =================================
 # VISUALISASI PCA
-# =========================
+# =================================
 st.subheader("📊 Visualisasi Cluster (PCA)")
 
-fig, ax = plt.subplots(figsize=(7,5))
+fig, ax = plt.subplots(figsize=(7, 5))
 scatter = ax.scatter(
     df["PCA1"],
     df["PCA2"],
@@ -93,8 +148,8 @@ ax.set_ylabel("PCA 2")
 ax.set_title("PCA Visualization - Meta Ensemble Clustering")
 st.pyplot(fig)
 
-# =========================
+# =================================
 # DISTRIBUSI CLUSTER
-# =========================
+# =================================
 st.subheader("📈 Jumlah Data per Cluster")
 st.bar_chart(df["Cluster_LogReg"].value_counts())

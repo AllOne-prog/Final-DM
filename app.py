@@ -57,7 +57,10 @@ if st.button("Cari User"):
 # =================================
 # INPUT MANUAL + SPENDING SCORE
 # =================================
-st.subheader("🧠 Input Manual & Prediksi Spending Score")
+# =================================
+# INPUT MANUAL + INTERPRETASI CLUSTER
+# =================================
+st.subheader("🧠 Input Manual & Interpretasi Segment Pembeli")
 
 col1, col2, col3 = st.columns(3)
 
@@ -70,7 +73,49 @@ with col2:
 with col3:
     purchased = st.selectbox("Purchased", [0, 1])
 
-if st.button("Prediksi"):
+if st.button("Analisis Segment"):
+    # Cari data terdekat
+    features = df[["Age", "AnnualSalary", "Purchased"]]
+    input_vector = np.array([[age, salary, purchased]])
+
+    distances = euclidean_distances(features, input_vector)
+    nearest_index = distances.argmin()
+    nearest_data = df.iloc[nearest_index]
+
+    cluster_final = nearest_data["Cluster_LogReg"]
+
+    st.success("Hasil Segmentasi Pengguna")
+
+    st.write("🔹 Cluster Final:", cluster_final)
+
+    # ===============================
+    # KESIMPULAN BERDASARKAN CLUSTER
+    # ===============================
+    if cluster_final == 0:
+        conclusion = (
+            "Pengguna termasuk dalam segmen pembeli dengan pendapatan rendah hingga menengah "
+            "dan kecenderungan pembelian yang relatif rendah. Segmen ini cocok untuk ditargetkan "
+            "mobil ekonomis atau city car dengan fokus pada harga terjangkau dan efisiensi."
+        )
+    elif cluster_final == 1:
+        conclusion = (
+            "Pengguna termasuk dalam segmen pembeli dengan pendapatan menengah dan usia produktif. "
+            "Segmen ini memiliki potensi pembelian yang cukup baik dan cocok untuk ditargetkan "
+            "mobil keluarga atau kendaraan kelas menengah dengan fokus pada kenyamanan dan fitur."
+        )
+    else:
+        conclusion = (
+            "Pengguna termasuk dalam segmen pembeli dengan pendapatan tinggi dan potensi pembelian besar. "
+            "Segmen ini cocok untuk ditargetkan kendaraan SUV atau mobil premium dengan fokus pada "
+            "performa, kenyamanan, dan prestise."
+        )
+
+    st.info("📌 Kesimpulan:")
+    st.write(conclusion)
+
+    st.subheader("📍 Data Referensi Terdekat")
+    st.dataframe(nearest_data.to_frame().T)
+
     # ---------------------------------
     # CARI DATA TERDEKAT
     # ---------------------------------
